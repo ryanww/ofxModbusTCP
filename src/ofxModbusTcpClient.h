@@ -1,14 +1,41 @@
+/**********************************************************************************
+ 
+ Copyright (C) 2014 Ryan Wilkinson - Wired Media Solutions (www.wiredms.com)
+ 
+ Permission is hereby granted, free of charge, to any person obtaining a copy of
+ this software and associated documentation files (the "Software"), to deal in
+ the Software without restriction, including without limitation the rights to
+ use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ of the Software, and to permit persons to whom the Software is furnished to do
+ so, subject to the following conditions:
+ 
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+ 
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+ 
+ **********************************************************************************/
+
+
 #pragma once
 
 #include "ofMain.h"
 #include "ofxNetwork.h"
 #include "modbusSlave.h"
+#include "ofEvents.h"
+
 
 typedef unsigned short  WORD;
 #define LOWBYTE(v)   ((unsigned char) (v))
 #define HIGHBYTE(v)  ((unsigned char) (((unsigned int) (v)) >> 8))
 
-class ofxModbusTcpClient : public ofBaseApp {
+class ofxModbusTcpClient {
 public:
     
     void setup(string _ip, int _numberOfSlaves);
@@ -17,7 +44,6 @@ public:
     void connect();
     void disconnect();
     
-    void update();
     
     bool active = false;
     
@@ -41,8 +67,11 @@ public:
     bool getCoil(int _id, int _startAddress);
     int getRegister(int _id, int _startAddress);
     
-    
+    bool connected = false;
 protected:
+    
+    void update(ofEventArgs & args);
+    
     //Slave Addresses & Slave Variables
     int numberOfSlaves = 1;
     void setupSlaves();
@@ -66,6 +95,7 @@ protected:
     int getTransactionID();
     int lastTransactionID = 0;
     int lastFunctionCode = 0;
+    int lastStartingReg = 0;
     unsigned char ToByte(bool b[8]);
     
 };
