@@ -30,10 +30,16 @@
 #include "modbusSlave.h"
 #include "ofEvents.h"
 
-
 typedef unsigned short  WORD;
 #define LOWBYTE(v)   ((unsigned char) (v))
 #define HIGHBYTE(v)  ((unsigned char) (((unsigned int) (v)) >> 8))
+
+struct mbCommand{
+    vector<uint8_t> msg;
+    WORD length;
+    long timeAdded;
+    string debugString;
+};
 
 class ofxModbusTcpClient {
 public:
@@ -51,7 +57,7 @@ public:
     void setEnabled(bool _enabled);
 	
     bool debug = false;
-    void setDebug(bool _debug);
+    void setDebugEnabled(bool _enabled);
     
     //Slave Updates
     void updateCoils(int _id, int _startAddress, int _qty);
@@ -87,15 +93,20 @@ protected:
     string ip = "";
     int port = 502;
     
+    //Commands
+    vector<mbCommand> commandToSend;
+    void sendNextCommand();
+    int getTransactionID();
+    int lastTransactionID = 0;
+    int lastFunctionCode = 0;
+    int lastStartingReg = 0;
+    bool waitingForReply = false;
+    
     //Debug
     void sendDebug(string _msg);
     
     //tools
     WORD convertToWord(WORD _h, WORD _l);
-    int getTransactionID();
-    int lastTransactionID = 0;
-    int lastFunctionCode = 0;
-    int lastStartingReg = 0;
     unsigned char ToByte(bool b[8]);
     
 };
