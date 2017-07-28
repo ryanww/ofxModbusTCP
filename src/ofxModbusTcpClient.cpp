@@ -1,4 +1,4 @@
-/**********************************************************************************
+ /**********************************************************************************
  
  Copyright (C) 2014 Ryan Wilkinson - Wired Media Solutions (www.wiredms.com)
  
@@ -145,16 +145,16 @@ void ofxModbusTcpClient::update(ofEventArgs & args) {
                         }
                     } break;
                     case 5: {
-                        sendDebug("Reply Received, Setting A Single Coul");
                         int address = convertToWord(headerReply[8], headerReply[9])+1;
                         bool t;
                         if (headerReply[10] == 0xff) {t=true;} else {t=false;}
                         slaves.at(originatingID-1)->setCoil(address+1, t);
+                        sendDebug("Reply Received, Setting Single Coil at Address "+ofToString(address)+" to value "+ofToString(t));
                     } break;
                     case 6: {
-                        sendDebug("Reply Received, Setting A Single Register");
                         int address = convertToWord(headerReply[8], headerReply[9]);
                         slaves.at(originatingID-1)->setRegister(address+1, convertToWord(headerReply[10], headerReply[11]));
+                        sendDebug("Reply Received, Setting Single Register at Address "+ofToString(address)+" to value "+ofToString(convertToWord(headerReply[10], headerReply[11])));
                     } break;
                     case 15: {
                         sendDebug("Reply Received, Setting Multiple Coils - not supported yet");
