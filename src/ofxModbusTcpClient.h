@@ -41,7 +41,7 @@ struct mbCommand{
     string debugString;
 };
 
-class ofxModbusTcpClient {
+class ofxModbusTcpClient : public ofThread {
 public:
     
     void setup(string _ip, int _numberOfSlaves);
@@ -76,7 +76,8 @@ public:
     bool connected = false;
 protected:
     
-    void update(ofEventArgs & args);
+    //void update(ofEventArgs & args);
+    void threadedFunction();
     
     //Slave Addresses & Slave Variables
     int numberOfSlaves = 1;
