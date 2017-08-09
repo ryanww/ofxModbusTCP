@@ -49,7 +49,7 @@ public:
     
     void connect();
     void disconnect();
-    
+    bool isConnected();
     
     bool active = false;
     
@@ -73,7 +73,6 @@ public:
     bool getCoil(int _id, int _startAddress);
     int getRegister(int _id, int _startAddress);
     
-    bool connected = false;
 protected:
     
     //void update(ofEventArgs & args);
@@ -90,7 +89,7 @@ protected:
     float counter = 0.0f;
     int connectTime = 0;
     int deltaTime = 0;
-    bool weConnected = 0;
+    bool weConnected = false;
     string ip = "";
     int port = 502;
     

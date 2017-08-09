@@ -60,7 +60,7 @@ void ofxModbusTcpClient::connect() {
     connectTime = 0;
     deltaTime = 0;
     
-    startThread();
+    if (!isThreadRunning())startThread();
     
     ofLogNotice("ofxModbusTCP IP:"+ip)<<"Connect - Status: "<<weConnected;
 }
@@ -68,10 +68,17 @@ void ofxModbusTcpClient::disconnect() {
     if (enabled){
         tcpClient.close();
     }
-    stopThread();
     enabled = false;
+    weConnected = false;
     commandToSend.clear();
     ofLogNotice("ofxModbusTCP IP:"+ip)<<"Disconnect";
+}
+bool ofxModbusTcpClient::isConnected(){
+    if (enabled){
+        return weConnected;
+    } else {
+        return false;
+    }
 }
 
 //Enables
@@ -92,13 +99,16 @@ void ofxModbusTcpClient::threadedFunction(){
         int transactionID = 0;
         int lengthPacket = 0;
         uint8_t headerReply[2000];
-        connected = weConnected;
         
         if (enabled) {
             if (weConnected) {
-            
-                int totalBytes = 0;
-                if (tcpClient.isConnected() && tcpClient.receiveRawBytes((char *)headerReply, 2000) > 0) { //Grab Header
+                //Check for socket error condition..
+                if (!tcpClient.isConnected()){
+                    weConnected = false;
+                }
+                
+                //Read from TCP
+                if (tcpClient.receiveRawBytes((char *)headerReply, 2000) > 0) { //Grab Header
                     int transID = convertToWord(headerReply[0], headerReply[1]);
                     int protocolID = convertToWord(headerReply[3], headerReply[4]);
                     
@@ -162,12 +172,12 @@ void ofxModbusTcpClient::threadedFunction(){
                 }
                 
                 //Send next command
-                if (!waitingForReply){
+                if (!waitingForReply && weConnected){
                     sendNextCommand();
                 }
                 
                 //Activity
-                if(!active) {
+                if(!active && weConnected) {
                     active = true;
                     PreviousActivityTime = ofGetElapsedTimeMillis();
                 }
@@ -177,12 +187,11 @@ void ofxModbusTcpClient::threadedFunction(){
                     }
                 }
                 
-            } else if (!tcpClient.isConnected()){
+            } else if (!weConnected){
                 //if we are not connected lets try and reconnect every 5 seconds
                 deltaTime = ofGetElapsedTimeMillis() - connectTime;
                 
                 if( deltaTime > 5000 ){
-//                    weConnected = tcpClient.setup(ip, port);
                     connect();
                     connectTime = ofGetElapsedTimeMillis();
                 }
@@ -190,6 +199,7 @@ void ofxModbusTcpClient::threadedFunction(){
         } else {
             if (tcpClient.isConnected()) {
                 tcpClient.close();
+                weConnected = false;
             }
         }
     }
