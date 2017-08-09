@@ -57,7 +57,7 @@ public:
         if (_coilAddress>0 && _coilAddress<=C.size()) {
             C.at(_coilAddress-1) = _newValue;
             stringstream dm;
-            dm<<"Coil "<<_coilAddress<<" set to: "<<_newValue;
+            dm<<"Coil "<<_coilAddress-1<<" set to: "<<_newValue;
             sendDebug(dm.str());
         } else {
             ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Set Slave Coil Exceeds Size"<<endl;

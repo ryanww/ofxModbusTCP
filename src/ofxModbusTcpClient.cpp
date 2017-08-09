@@ -86,115 +86,7 @@ void ofxModbusTcpClient::setDebugEnabled(bool _enabled){
     }
 }
 
-//Main Update
-//void ofxModbusTcpClient::update(ofEventArgs & args) {
-//
-//    connected = weConnected;
-//
-//    int transactionID = 0;
-//    int lengthPacket = 0;
-//
-//    if (enabled) {
-//        if (weConnected) {
-//
-//            if (!waitingForReply){
-//                sendNextCommand();
-//            }
-//
-//            uint8_t headerReply[2000];
-//
-//            int totalBytes = 0;
-//            if (tcpClient.receiveRawBytes((char *)headerReply, 2000) > 0) { //Grab Header
-//                int transID = convertToWord(headerReply[0], headerReply[1]);
-//                int protocolID = convertToWord(headerReply[3], headerReply[4]);
-//
-//
-//                //Ignore if not last transaction ID
-//                if (transID != lastTransactionID) {
-//                    ofLogError("ofxModbusTCP IP:"+ip)<<"Transaction ID Mismatch, discarding Reply. Got: "<<ofToHex(transID)<<" expected:"<<ofToHex(lastTransactionID);
-//                    return;
-//                }
-//
-//                //Ignore if not correct protocol
-//                if (headerReply[3] != 0x00 || headerReply[4] != 0x00) {
-//                    ofLogError("ofxModbusTCP IP:"+ip)<<"Invalid Protocol ID, discarding reply. Got: "<<ofToHex(headerReply[3])<<" "<<ofToHex(headerReply[4]);
-//
-//                    return;
-//                }
-//
-//                int functionCode = headerReply[7];
-//
-//                //Ignore if not correct last function code
-//                if (functionCode != lastFunctionCode) {
-//                    ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Mismatch, discarding reply.";
-//                }
-//
-//                int originatingID = headerReply[6];
-//                int lengthData = convertToWord(headerReply[4], headerReply[5]);
-//
-//
-//                switch (functionCode) {
-//                    case 1: {
-//                        sendDebug("Reply Received, Setting Multiple Coils - not supported yet");
-//                    } break;
-//                    case 3: {
-//                        sendDebug("Reply Received, Setting Multiple Registers");
-//                        int byteCount = headerReply[8];
-//                        int currentByte = 9;
-//                        for (int i=0; i<(byteCount/2); i++) {
-//                            int newVal = convertToWord(headerReply[currentByte], headerReply[currentByte+1]);
-//                            slaves.at(originatingID-1)->setRegister(i+1, newVal);
-//                            currentByte = currentByte + 2;
-//                        }
-//                    } break;
-//                    case 5: {
-//                        int address = convertToWord(headerReply[8], headerReply[9])+1;
-//                        bool t;
-//                        if (headerReply[10] == 0xff) {t=true;} else {t=false;}
-//                        slaves.at(originatingID-1)->setCoil(address+1, t);
-//                        sendDebug("Reply Received, Setting Single Coil at Address "+ofToString(address)+" to value "+ofToString(t));
-//                    } break;
-//                    case 6: {
-//                        int address = convertToWord(headerReply[8], headerReply[9]);
-//                        slaves.at(originatingID-1)->setRegister(address+1, convertToWord(headerReply[10], headerReply[11]));
-//                        sendDebug("Reply Received, Setting Single Register at Address "+ofToString(address)+" to value "+ofToString(convertToWord(headerReply[10], headerReply[11])));
-//                    } break;
-//                    case 15: {
-//                        sendDebug("Reply Received, Setting Multiple Coils - not supported yet");
-//                    } break;
-//                    case 16: {
-//                        sendDebug("Reply Received, Setting Multiple Registers - not supported yet");
-//                    } break;
-//                }
-//                waitingForReply = false;
-//            }
-//
-//            if(!active) {
-//                active = true;
-//                PreviousActivityTime = ofGetElapsedTimeMillis();
-//            }
-//
-//            if(ofGetElapsedTimeMillis() > (PreviousActivityTime + 60000)) {
-//                if(active) {
-//                    active = false;
-//                }
-//            }
-//
-//        } else if (!tcpClient.isConnected()){
-//            //if we are not connected lets try and reconnect every 5 seconds
-//            deltaTime = ofGetElapsedTimeMillis() - connectTime;
-//
-//            if( deltaTime > 5000 ){
-//                weConnected = tcpClient.setup(ip, port);
-//                connectTime = ofGetElapsedTimeMillis();
-//            }
-//        }
-//    } else {
-//        if (tcpClient.isConnected()) {
-//            tcpClient.close();
-//        }
-//    }
-//}
+//Main Function
 void ofxModbusTcpClient::threadedFunction(){
     while (isThreadRunning()){
         int transactionID = 0;
@@ -206,7 +98,7 @@ void ofxModbusTcpClient::threadedFunction(){
             if (weConnected) {
             
                 int totalBytes = 0;
-                if (tcpClient.receiveRawBytes((char *)headerReply, 2000) > 0) { //Grab Header
+                if (tcpClient.isConnected() && tcpClient.receiveRawBytes((char *)headerReply, 2000) > 0) { //Grab Header
                     int transID = convertToWord(headerReply[0], headerReply[1]);
                     int protocolID = convertToWord(headerReply[3], headerReply[4]);
                     
@@ -223,9 +115,10 @@ void ofxModbusTcpClient::threadedFunction(){
                     }
                     
                     int functionCode = headerReply[7];
+                    if (functionCode > 127) functionCode = functionCode - 127;
                     //Ignore if not correct last function code
                     if (functionCode != lastFunctionCode) {
-                        ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Mismatch, discarding reply.";
+                        ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Mismatch, discarding reply - Should be "<<lastFunctionCode<<", got "<<functionCode;
                     }
                     
                     int originatingID = headerReply[6];
@@ -250,13 +143,13 @@ void ofxModbusTcpClient::threadedFunction(){
                             int address = convertToWord(headerReply[8], headerReply[9])+1;
                             bool t;
                             if (headerReply[10] == 0xff) {t=true;} else {t=false;}
-                            slaves.at(originatingID-1)->setCoil(address+1, t);
                             sendDebug("Reply Received, Setting Single Coil at Address "+ofToString(address)+" to value "+ofToString(t));
+                            slaves.at(originatingID-1)->setCoil(address, t);
                         } break;
                         case 6: {
                             int address = convertToWord(headerReply[8], headerReply[9]);
-                            slaves.at(originatingID-1)->setRegister(address+1, convertToWord(headerReply[10], headerReply[11]));
                             sendDebug("Reply Received, Setting Single Register at Address "+ofToString(address)+" to value "+ofToString(convertToWord(headerReply[10], headerReply[11])));
+                            slaves.at(originatingID-1)->setRegister(address+1, convertToWord(headerReply[10], headerReply[11]));
                         } break;
                         case 15: {
                             sendDebug("Reply Received, Setting Multiple Coils - not supported yet");
@@ -289,7 +182,8 @@ void ofxModbusTcpClient::threadedFunction(){
                 deltaTime = ofGetElapsedTimeMillis() - connectTime;
                 
                 if( deltaTime > 5000 ){
-                    weConnected = tcpClient.setup(ip, port);
+//                    weConnected = tcpClient.setup(ip, port);
+                    connect();
                     connectTime = ofGetElapsedTimeMillis();
                 }
             }
