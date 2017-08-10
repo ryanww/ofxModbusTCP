@@ -94,7 +94,8 @@ protected:
     int port = 502;
     
     //Commands
-    vector<mbCommand> commandToSend;
+    vector<mbCommand*> commandToSend;
+    mbCommand* lastSentCommand;
     void sendNextCommand();
     int getTransactionID();
     int lastTransactionID = 0;

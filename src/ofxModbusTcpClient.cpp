@@ -51,18 +51,22 @@ void ofxModbusTcpClient::setupSlaves() {
 
 //Connection
 void ofxModbusTcpClient::connect() {
-    enabled = true;
-    try {
-        weConnected = tcpClient.setup(ip, port);
-    } catch (...) {
-        cout<<"Couldn't connect to Modbus Master at "<<ip<<endl;
+    if (!weConnected){
+        enabled = true;
+        try {
+            weConnected = tcpClient.setup(ip, port);
+        } catch (...) {
+            cout<<"Couldn't connect to Modbus Master at "<<ip<<endl;
+        }
+        connectTime = 0;
+        deltaTime = 0;
+        
+        if (!isThreadRunning())startThread();
+        
+        ofLogNotice("ofxModbusTCP IP:"+ip)<<"Connect - Status: "<<weConnected;
+    } else {
+        ofLogNotice("ofxModbusTCP IP:"+ip)<<"Already connected - ignoring1";
     }
-    connectTime = 0;
-    deltaTime = 0;
-    
-    if (!isThreadRunning())startThread();
-    
-    ofLogNotice("ofxModbusTCP IP:"+ip)<<"Connect - Status: "<<weConnected;
 }
 void ofxModbusTcpClient::disconnect() {
     if (enabled){
@@ -137,7 +141,30 @@ void ofxModbusTcpClient::threadedFunction(){
                     
                     switch (functionCode) {
                         case 1: {
-                            sendDebug("Reply Received, Setting Multiple Coils - not supported yet");
+                            int byteCount = headerReply[8];
+                            vector<char> nc;
+                            vector<bool> nv;
+                            for (int i=9; i<9+byteCount; i++){ nc.push_back(headerReply[i]); }
+                            int startAddr = convertToWord(lastSentCommand->msg[8], lastSentCommand->msg[9])+1;
+                            int qty = convertToWord(lastSentCommand->msg[10], lastSentCommand->msg[11]);
+                            sendDebug("Reply Received, Reading Multiple Coils - Qty:"+ofToString(qty)+" starting at:"+ofToString(startAddr));
+                            if ((nc.size()*8) >= qty ){
+                                for (int i=0; i<nc.size(); i++){
+                                    bitset<8> bs(nc[i]);
+                                    if ((i*8)+1 <= qty){ nv.push_back(bs[0]); }
+                                    if ((i*8)+2 <= qty){ nv.push_back(bs[1]); }
+                                    if ((i*8)+3 <= qty){ nv.push_back(bs[2]); }
+                                    if ((i*8)+4 <= qty){ nv.push_back(bs[3]); }
+                                    if ((i*8)+5 <= qty){ nv.push_back(bs[4]); }
+                                    if ((i*8)+6 <= qty){ nv.push_back(bs[5]); }
+                                    if ((i*8)+7 <= qty){ nv.push_back(bs[6]); }
+                                    if ((i*8)+8 <= qty){ nv.push_back(bs[7]); }
+                                }
+                                
+                                slaves.at(originatingID-1)->setMultipleCoils(startAddr, nv);
+                            } else {
+                                sendDebug("Error - Quantity doesn't match up.");
+                            }
                         } break;
                         case 3: {
                             sendDebug("Reply Received, Setting Multiple Registers");
@@ -259,12 +286,12 @@ void ofxModbusTcpClient::updateCoils(int _id, int _startAddress, int _qty) {
                 lba.push_back(localByteArray[i]);
             }
             
-            mbCommand c;
-            c.msg = lba;
-            c.length = length;
-            c.timeAdded = ofGetElapsedTimeMillis();
-            c.debugString = dm.str();
-            commandToSend.push_back(c);
+            mbCommand * cmd = new mbCommand();
+            cmd->msg = lba;
+            cmd->length = length;
+            cmd->timeAdded = ofGetElapsedTimeMillis();
+            cmd->debugString = dm.str();
+            commandToSend.push_back(cmd);
         } else {
             ofLogError("ofxModbusTCP IP:"+ip)<<"Reding Coils Parameters Are Out Of Range";
         }
@@ -304,12 +331,12 @@ void ofxModbusTcpClient::updateRegisters(int _id, int _startAddress, int _qty) {
                 lba.push_back(localByteArray[i]);
             }
             
-            mbCommand c;
-            c.msg = lba;
-            c.length = length;
-            c.timeAdded = ofGetElapsedTimeMillis();
-            c.debugString = dm.str();
-            commandToSend.push_back(c);
+            mbCommand * cmd = new mbCommand();
+            cmd->msg = lba;
+            cmd->length = length;
+            cmd->timeAdded = ofGetElapsedTimeMillis();
+            cmd->debugString = dm.str();
+            commandToSend.push_back(cmd);
         } else {
             ofLogError("ofxModbusTCP IP:"+ip)<<"Read Registers Parameters Are Out Of Range";
         }
@@ -354,12 +381,12 @@ void ofxModbusTcpClient::writeCoil(int _id, int _startAddress, bool _newValue) {
                 lba.push_back(localByteArray[i]);
             }
             
-            mbCommand c;
-            c.msg = lba;
-            c.length = length;
-            c.timeAdded = ofGetElapsedTimeMillis();
-            c.debugString = dm.str();
-            commandToSend.push_back(c);
+            mbCommand * cmd = new mbCommand();
+            cmd->msg = lba;
+            cmd->length = length;
+            cmd->timeAdded = ofGetElapsedTimeMillis();
+            cmd->debugString = dm.str();
+            commandToSend.push_back(cmd);
         } else {
             ofLogError("ofxModbusTCP IP:"+ip)<<"Write Coil Parameters Are Out Of Range";
         }
@@ -396,12 +423,11 @@ void ofxModbusTcpClient::writeRegister(int _id, int _startAddress, int _newValue
                 lba.push_back(localByteArray[i]);
             }
             
-            mbCommand c;
-            c.msg = lba;
-            c.length = length;
-            c.timeAdded = ofGetElapsedTimeMillis();
-            c.debugString = dm.str();
-            commandToSend.push_back(c);
+            commandToSend.push_back(new mbCommand);
+            commandToSend.back()->msg = lba;
+            commandToSend.back()->length = length;
+            commandToSend.back()->timeAdded = ofGetElapsedTimeMillis();
+            commandToSend.back()->debugString = dm.str();
         } else {
             ofLogError("ofxModbusTCP IP:"+ip)<<"Write Register Parameters Are Out Of Range";
         }
@@ -455,12 +481,11 @@ void ofxModbusTcpClient::writeMultipleCoils(int _id, int _startAddress, vector<b
                 lba.push_back(localByteArray[i]);
             }
 
-            mbCommand c;
-            c.msg = lba;
-            c.length = length;
-            c.timeAdded = ofGetElapsedTimeMillis();
-            c.debugString = dm.str();
-            commandToSend.push_back(c);
+            commandToSend.push_back(new mbCommand);
+            commandToSend.back()->msg = lba;
+            commandToSend.back()->length = length;
+            commandToSend.back()->timeAdded = ofGetElapsedTimeMillis();
+            commandToSend.back()->debugString = dm.str();
         } else {
             ofLogError("ofxModbusTCP IP:"+ip)<<"Write Multiple Coil Parameters Are Out Of Range";
         }
@@ -502,12 +527,11 @@ void ofxModbusTcpClient::writeMultipleRegisters(int _id, int _startAddress, vect
                 lba.push_back(localByteArray[i]);
             }
             
-            mbCommand c;
-            c.msg = lba;
-            c.length = length;
-            c.timeAdded = ofGetElapsedTimeMillis();
-            c.debugString = dm.str();
-            commandToSend.push_back(c);
+            commandToSend.push_back(new mbCommand);
+            commandToSend.back()->msg = lba;
+            commandToSend.back()->length = length;
+            commandToSend.back()->timeAdded = ofGetElapsedTimeMillis();
+            commandToSend.back()->debugString = dm.str();
         } else {
             ofLogError("ofxModbusTCP IP:"+ip)<<"Write Multiple Register Parameters Are Out Of Range";
         }
@@ -522,31 +546,35 @@ int ofxModbusTcpClient::getTransactionID() {
 }
 void ofxModbusTcpClient::sendNextCommand(){
     if (commandToSend.size()>0){
-        waitingForReply = true;
-        
-        //Set last function code
-        lastFunctionCode = commandToSend[0].msg[7];
-        
-        //set transaction id
-        WORD tx = getTransactionID();
-        commandToSend[0].msg[0] = HIGHBYTE(tx); //Transaction High
-        commandToSend[0].msg[1] = LOWBYTE(tx); //Transaction Low
-        
-        //load vector to local uint8_t
-        uint8_t localByteArray[commandToSend[0].msg.size()];
-        for (int i=0; i<commandToSend[0].msg.size(); i++){
-            localByteArray[i] = commandToSend[0].msg[i];
+        if (commandToSend.front()->msg.size()>6){
+            waitingForReply = true;
+            
+            //Set last function code
+            lastFunctionCode = commandToSend.front()->msg[7];
+            
+            //set transaction id
+            WORD tx = getTransactionID();
+            commandToSend.front()->msg[0] = HIGHBYTE(tx); //Transaction High
+            commandToSend.front()->msg[1] = LOWBYTE(tx); //Transaction Low
+            
+            //load vector to local uint8_t
+            uint8_t localByteArray[commandToSend.front()->msg.size()];
+            for (int i=0; i<commandToSend.front()->msg.size(); i++){
+                localByteArray[i] = commandToSend.front()->msg[i];
+            }
+            
+            //send command
+            unsigned char * t = localByteArray;
+            if (weConnected)tcpClient.sendRawBytes((const char*)t, 6+commandToSend.front()->length);
+            
+            lastSentCommand = commandToSend.front();
+            
+            //Log it
+            sendDebug("Sent: "+commandToSend.front()->debugString);
+            
+            //erase last command
+            commandToSend.erase(commandToSend.begin());
         }
-        
-        //send command
-        unsigned char * t = localByteArray;
-        tcpClient.sendRawBytes((const char*)t, 6+commandToSend[0].length);
-        
-        //Log it
-        sendDebug("Sent: "+commandToSend[0].debugString);
-        
-        //erase last command
-        commandToSend.erase(commandToSend.begin());
     }
 }
 
