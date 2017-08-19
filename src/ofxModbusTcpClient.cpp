@@ -31,14 +31,14 @@ void ofxModbusTcpClient::setup(string _ip, int _numberOfSlaves) {
     ip = _ip;
     numberOfSlaves = _numberOfSlaves;
     if (numberOfSlaves == 0 || numberOfSlaves > 247) { numberOfSlaves = 1; }
-    ofLogNotice("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
+    ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
     setupSlaves();
     //ofAddListener(ofEvents().update, this, &ofxModbusTcpClient::update);
 }
 void ofxModbusTcpClient::setup(string _ip) {
     ip = _ip;
     numberOfSlaves = 1;
-    ofLogNotice("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
+    ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
     setupSlaves();
     //ofAddListener(ofEvents().update, this, &ofxModbusTcpClient::update);
 }
@@ -63,9 +63,9 @@ void ofxModbusTcpClient::connect() {
         
         if (!isThreadRunning())startThread();
         
-        ofLogNotice("ofxModbusTCP IP:"+ip)<<"Connect - Status: "<<weConnected;
+        ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Connect - Status: "<<weConnected;
     } else {
-        ofLogNotice("ofxModbusTCP IP:"+ip)<<"Already connected - ignoring1";
+        ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Already connected - ignoring1";
     }
 }
 void ofxModbusTcpClient::disconnect() {
@@ -75,7 +75,7 @@ void ofxModbusTcpClient::disconnect() {
     enabled = false;
     weConnected = false;
     commandToSend.clear();
-    ofLogNotice("ofxModbusTCP IP:"+ip)<<"Disconnect";
+    ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Disconnect";
 }
 bool ofxModbusTcpClient::isConnected(){
     if (enabled){
