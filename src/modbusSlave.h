@@ -38,14 +38,14 @@ public:
         if (_coilAddress>0 && _coilAddress<=C.size()) {
             return C.at(_coilAddress-1);
         } else {
-            ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Get Slave Coil Exceeds Size"<<endl;
+            ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Get Slave Coil Exceeds Size";
         }
     }
     int getRegister (int _registerAddress) {
         if (_registerAddress>0 && _registerAddress<=R.size()) {
             return R.at(_registerAddress-1);
         } else {
-            ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Get Slave Register Exceeds Size"<<endl;
+            ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Get Slave Register Exceeds Size";
         }
     }
     
@@ -60,7 +60,7 @@ public:
             dm<<"Coil "<<_coilAddress-1<<" set to: "<<_newValue;
             sendDebug(dm.str());
         } else {
-            ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Set Slave Coil Exceeds Size"<<endl;
+            ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Set Slave Coil Exceeds Size";
         }
     }
     void setMultipleCoils(int _coilStartingAddress, vector<bool> _newValues) {
@@ -73,7 +73,7 @@ public:
             }
             sendDebug(dm.str());
         } else {
-            ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Set Multiple Slave Coils Exceeds Sizes"<<endl;
+            ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Set Multiple Slave Coils Exceeds Sizes";
         }
     }
     void setRegister (int _registerAddress, int _newValue) {
@@ -83,7 +83,7 @@ public:
             dm<<"Register "<<_registerAddress<<" set to: "<<_newValue;
             sendDebug(dm.str());
         } else {
-            ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Set Slave Register Exceeds Size"<<endl;
+            ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Set Slave Register Exceeds Size";
         }
     }
     
