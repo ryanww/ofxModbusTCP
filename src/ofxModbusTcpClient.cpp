@@ -56,7 +56,7 @@ void ofxModbusTcpClient::connect() {
         try {
             weConnected = tcpClient.setup(ip, port);
         } catch (...) {
-            cout<<"Couldn't connect to Modbus Master at "<<ip<<endl;
+            ofLogError("ofxModbusTCP IP:"+ip)<<"Couldn't connect to Modbus Master at "<<ip;
         }
         connectTime = 0;
         deltaTime = 0;
