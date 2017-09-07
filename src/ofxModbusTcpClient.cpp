@@ -129,10 +129,58 @@ void ofxModbusTcpClient::threadedFunction(){
                     }
                     
                     int functionCode = headerReply[7];
-                    if (functionCode > 127) functionCode = functionCode - 127;
-                    //Ignore if not correct last function code
-                    if (functionCode != lastFunctionCode) {
-                        ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Mismatch, discarding reply - Should be "<<lastFunctionCode<<", got "<<functionCode;
+                    if (functionCode != lastFunctionCode) { //There was an error or exception code
+                        if (functionCode == 0x80 + lastFunctionCode){
+                            int exceptionCode = headerReply[8];
+                            switch (headerReply[8]){
+                                case 0x01: {
+                                    ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Error received - exception code = Illegal Function";
+                                    break;
+                                }
+                                case 0x02: {
+                                    ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Error received - exception code = Illegal Data Address";
+                                    break;
+                                }
+                                case 0x03: {
+                                    ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Error received - exception code = Illegal Data Value";
+                                    break;
+                                }
+                                case 0x04: {
+                                    ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Error received - exception code = Slave Device Failure";
+                                    break;
+                                }
+                                case 0x05: {
+                                    ofLogNotice("ofxModbusTCP IP:"+ip)<<"Function Code Error received - exception code = Acknowledge";
+                                    break;
+                                }
+                                case 0x06: {
+                                    ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Error received - exception code = Slave Device Busy";
+                                    break;
+                                }
+                                case 0x07: {
+                                    ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Error received - exception code = Negative Acknowledge";
+                                    break;
+                                }
+                                case 0x08: {
+                                    ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Error received - exception code = Memory Parity Error";
+                                    break;
+                                }
+                                case 0x10: {
+                                    ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Error received - exception code = Gateway Path Unavailable";
+                                    break;
+                                }
+                                case 0x11: {
+                                    ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Error received - exception code = Gateway Target Device Failed to Respond";
+                                    break;
+                                }
+                                default: {
+                                    ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Error received - exception code unknown: "<<exceptionCode;
+                                    break;
+                                }
+                            }
+                        } else {
+                            ofLogError("ofxModbusTCP IP:"+ip)<<"Function Code Mismatch, discarding reply - Should be "<<lastFunctionCode<<", got "<<functionCode;
+                        }
                     }
                     
                     int originatingID = headerReply[6];
@@ -423,11 +471,12 @@ void ofxModbusTcpClient::writeRegister(int _id, int _startAddress, int _newValue
                 lba.push_back(localByteArray[i]);
             }
             
-            commandToSend.push_back(new mbCommand);
-            commandToSend.back()->msg = lba;
-            commandToSend.back()->length = length;
-            commandToSend.back()->timeAdded = ofGetElapsedTimeMillis();
-            commandToSend.back()->debugString = dm.str();
+            mbCommand * cmd = new mbCommand();
+            cmd->msg = lba;
+            cmd->length = length;
+            cmd->timeAdded = ofGetElapsedTimeMillis();
+            cmd->debugString = dm.str();
+            commandToSend.push_back(cmd);
         } else {
             ofLogError("ofxModbusTCP IP:"+ip)<<"Write Register Parameters Are Out Of Range";
         }
@@ -481,11 +530,12 @@ void ofxModbusTcpClient::writeMultipleCoils(int _id, int _startAddress, vector<b
                 lba.push_back(localByteArray[i]);
             }
 
-            commandToSend.push_back(new mbCommand);
-            commandToSend.back()->msg = lba;
-            commandToSend.back()->length = length;
-            commandToSend.back()->timeAdded = ofGetElapsedTimeMillis();
-            commandToSend.back()->debugString = dm.str();
+            mbCommand * cmd = new mbCommand();
+            cmd->msg = lba;
+            cmd->length = length;
+            cmd->timeAdded = ofGetElapsedTimeMillis();
+            cmd->debugString = dm.str();
+            commandToSend.push_back(cmd);
         } else {
             ofLogError("ofxModbusTCP IP:"+ip)<<"Write Multiple Coil Parameters Are Out Of Range";
         }
@@ -527,11 +577,12 @@ void ofxModbusTcpClient::writeMultipleRegisters(int _id, int _startAddress, vect
                 lba.push_back(localByteArray[i]);
             }
             
-            commandToSend.push_back(new mbCommand);
-            commandToSend.back()->msg = lba;
-            commandToSend.back()->length = length;
-            commandToSend.back()->timeAdded = ofGetElapsedTimeMillis();
-            commandToSend.back()->debugString = dm.str();
+            mbCommand * cmd = new mbCommand();
+            cmd->msg = lba;
+            cmd->length = length;
+            cmd->timeAdded = ofGetElapsedTimeMillis();
+            cmd->debugString = dm.str();
+            commandToSend.push_back(cmd);
         } else {
             ofLogError("ofxModbusTCP IP:"+ip)<<"Write Multiple Register Parameters Are Out Of Range";
         }
