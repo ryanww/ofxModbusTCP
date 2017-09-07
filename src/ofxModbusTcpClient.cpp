@@ -72,6 +72,10 @@ void ofxModbusTcpClient::disconnect() {
     }
     enabled = false;
     weConnected = false;
+    
+    for (auto c : this->commandToSend){
+        delete c;
+    }
     commandToSend.clear();
     ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Disconnect";
 }
@@ -624,6 +628,7 @@ void ofxModbusTcpClient::sendNextCommand(){
             sendDebug("Sent: "+commandToSend.front()->debugString);
             
             //erase last command
+            delete commandToSend.front();
             commandToSend.erase(commandToSend.begin());
         }
     }
