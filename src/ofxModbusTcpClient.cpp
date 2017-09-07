@@ -33,14 +33,12 @@ void ofxModbusTcpClient::setup(string _ip, int _numberOfSlaves) {
     if (numberOfSlaves == 0 || numberOfSlaves > 247) { numberOfSlaves = 1; }
     ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
     setupSlaves();
-    //ofAddListener(ofEvents().update, this, &ofxModbusTcpClient::update);
 }
 void ofxModbusTcpClient::setup(string _ip) {
     ip = _ip;
     numberOfSlaves = 1;
     ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
     setupSlaves();
-    //ofAddListener(ofEvents().update, this, &ofxModbusTcpClient::update);
 }
 void ofxModbusTcpClient::setupSlaves() {
     for (int i = 0; i<=numberOfSlaves; i++) {
@@ -88,7 +86,9 @@ bool ofxModbusTcpClient::isConnected(){
 //Enables
 void ofxModbusTcpClient::setEnabled(bool _enabled) { enabled = _enabled; }
 void ofxModbusTcpClient::sendDebug(string _msg) {
-    ofLogVerbose("ofxModbusTCP IP:"+ip)<<_msg;
+    if (debug){
+        ofLogVerbose("ofxModbusTCP IP:"+ip)<<_msg;
+    }
 }
 void ofxModbusTcpClient::setDebugEnabled(bool _enabled){
     debug = _enabled;
