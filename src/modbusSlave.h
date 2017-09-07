@@ -87,13 +87,14 @@ public:
         }
     }
     
-    bool debug = false;
     void setDebugEnable(bool _enabled){debug = _enabled;}
     
 private:
     int idNumber;
     string masterIP;
     string name;
+    
+    bool debug = false;
     
     vector<int> R; //Registers
     vector<bool> C; //Coils
