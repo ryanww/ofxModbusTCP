@@ -107,8 +107,8 @@ private:
     
     void init(int _id) {
         idNumber = _id;
-        R.resize(125);
-        C.resize(2000);
+        R.resize(5000);
+        C.resize(5000);
     }    
 };
 
