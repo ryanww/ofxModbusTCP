@@ -26,9 +26,16 @@
 
 class slave {
 public:
-    slave (int _id) {
-        init(_id);
+    slave (int _id, int _numCoils, int _numRegisters) {
+        idNumber = _id;
+        R.resize(_numRegisters);
+        C.resize(_numCoils);
     }
+    ~slave(){
+        C.clear();
+        R.clear();
+    }
+    
     
     //Gets
     int getID() { return idNumber; }
@@ -108,11 +115,5 @@ private:
             ofLogVerbose("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<_dm;
         }
     }
-    
-    void init(int _id) {
-        idNumber = _id;
-        R.resize(5000);
-        C.resize(5000);
-    }    
 };
 
