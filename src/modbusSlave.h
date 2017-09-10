@@ -35,15 +35,15 @@ public:
     string getMasterIP() {return masterIP; }
     string getName() { return name; }
     bool getCoil (int _coilAddress) {
-        if (_coilAddress>0 && _coilAddress<=C.size()) {
-            return C.at(_coilAddress-1);
+        if (_coilAddress <= C.size()) {
+            return C.at(_coilAddress);
         } else {
             ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Get Slave Coil Exceeds Size";
         }
     }
     int getRegister (int _registerAddress) {
-        if (_registerAddress>0 && _registerAddress<=R.size()) {
-            return R.at(_registerAddress-1);
+        if (_registerAddress < R.size()) {
+            return R.at(_registerAddress);
         } else {
             ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Get Slave Register Exceeds Size";
         }
@@ -54,22 +54,26 @@ public:
     void setName (string _name) { name = _name; }
     void setmasterIP (string _ip) { masterIP = _ip; }
     void setCoil(int _coilAddress, bool _newValue) {
-        if (_coilAddress>0 && _coilAddress<=C.size()) {
-            C.at(_coilAddress-1) = _newValue;
+        if (_coilAddress<C.size()) {
+            C.at(_coilAddress) = _newValue;
             stringstream dm;
-            dm<<"Coil "<<_coilAddress-1<<" set to: "<<_newValue;
+            dm<<"Coil "<<_coilAddress<<" set to: "<<_newValue;
             sendDebug(dm.str());
         } else {
             ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Set Slave Coil Exceeds Size";
         }
     }
     void setMultipleCoils(int _coilStartingAddress, vector<bool> _newValues) {
-        if (_coilStartingAddress >= 0 && _newValues.size()){
+        if (_newValues.size()){
             stringstream dm;
-            dm<<"Coils starting at:"<<_coilStartingAddress-1<<" set to: ";
+            dm<<"Coils starting at:"<<_coilStartingAddress<<" set to: ";
             for (int i=0; i<_newValues.size(); i++){
-                C.at(_coilStartingAddress-1) = _newValues.at(i);
-                dm<<_newValues.at(i);
+                if (i < C.size()){
+                    C.at(_coilStartingAddress) = _newValues.at(i);
+                    dm<<_newValues.at(i);
+                } else {
+                    ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Set Multiple Slave Coils Exceeds Sizes";
+                }
             }
             sendDebug(dm.str());
         } else {
@@ -77,8 +81,8 @@ public:
         }
     }
     void setRegister (int _registerAddress, int _newValue) {
-        if (_registerAddress>0 && _registerAddress<=R.size()) {
-            R.at(_registerAddress-1) = _newValue;
+        if (_registerAddress < R.size()) {
+            R.at(_registerAddress) = _newValue;
             stringstream dm;
             dm<<"Register "<<_registerAddress<<" set to: "<<_newValue;
             sendDebug(dm.str());
