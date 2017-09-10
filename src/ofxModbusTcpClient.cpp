@@ -25,6 +25,37 @@
 
 #include "ofxModbusTcpClient.h"
 
+ofxModbusTcpClient::ofxModbusTcpClient(){
+    numOfCoils = 5000;
+    numOfRegisters = 5000;
+    
+    PreviousActivityTime = 0;
+    counter = 0.0f;
+    connectTime = 0;
+    deltaTime = 0;
+    weConnected = false;
+    ip = "";
+    port = 502;
+    numberOfSlaves = 1;
+    
+    lastTransactionID = 0;
+    lastFunctionCode = 0;
+    lastStartingReg = 0;
+    waitingForReply = false;
+}
+ofxModbusTcpClient::~ofxModbusTcpClient(){
+    stopThread();
+    for (auto &cmd : commandToSend){
+        delete cmd;
+    }
+    commandToSend.clear();
+    
+    for (auto &sl : slaves){
+        delete sl;
+    }
+    slaves.clear();
+}
+
 
 //Setup
 void ofxModbusTcpClient::setup(string _ip, int _numberOfSlaves) {
@@ -42,7 +73,7 @@ void ofxModbusTcpClient::setup(string _ip) {
 }
 void ofxModbusTcpClient::setupSlaves() {
     for (int i = 0; i<=numberOfSlaves; i++) {
-        slaves.push_back(new slave(i+1));
+        slaves.push_back(new slave(i+1, numOfCoils, numOfRegisters));
         slaves.back()->setmasterIP(ip);
     }
 }
@@ -67,7 +98,7 @@ void ofxModbusTcpClient::connect() {
     }
 }
 void ofxModbusTcpClient::disconnect() {
-    if (enabled){
+    if (enabled && tcpClient.isConnected()){
         tcpClient.close();
     }
     enabled = false;
@@ -96,14 +127,15 @@ void ofxModbusTcpClient::sendDebug(string _msg) {
 }
 void ofxModbusTcpClient::setDebugEnabled(bool _enabled){
     debug = _enabled;
-    for (int i=0; i<slaves.size(); i++){
-        slaves[i]->setDebugEnable(debug);
-    }
 }
 
 //Main Function
 void ofxModbusTcpClient::threadedFunction(){
     while (isThreadRunning()){
+        for (auto &s : slaves){
+            s->setDebugEnable(debug);
+        }
+        
         int transactionID = 0;
         int lengthPacket = 0;
         uint8_t headerReply[2000];
@@ -224,7 +256,7 @@ void ofxModbusTcpClient::threadedFunction(){
                             int currentByte = 9;
                             for (int i=0; i<(byteCount/2); i++) {
                                 int newVal = convertToWord(headerReply[currentByte], headerReply[currentByte+1]);
-                                slaves.at(originatingID-1)->setRegister(i+1, newVal);
+                                slaves.at(originatingID-1)->setRegister(i, newVal);
                                 currentByte = currentByte + 2;
                             }
                         } break;
@@ -236,9 +268,9 @@ void ofxModbusTcpClient::threadedFunction(){
                             slaves.at(originatingID-1)->setCoil(address, t);
                         } break;
                         case 6: {
-                            int address = convertToWord(headerReply[8], headerReply[9]);
+                            int address = convertToWord(headerReply[8], headerReply[9])+1;
                             sendDebug("Reply Received, Setting Single Register at Address "+ofToString(address)+" to value "+ofToString(convertToWord(headerReply[10], headerReply[11])));
-                            slaves.at(originatingID-1)->setRegister(address+1, convertToWord(headerReply[10], headerReply[11]));
+                            slaves.at(originatingID-1)->setRegister(address, convertToWord(headerReply[10], headerReply[11]));
                         } break;
                         case 15: {
                             sendDebug("Reply Received, Setting Multiple Coils - not supported yet");
@@ -287,7 +319,7 @@ void ofxModbusTcpClient::threadedFunction(){
 //Slave Get Values
 bool ofxModbusTcpClient::getCoil(int _id, int _startAddress) {
     if (enabled) {
-        if (_id>0 && _id <=slaves.size() && _startAddress>0 && _startAddress<=2000) {
+        if (_id>0 && _id < slaves.size() && _startAddress < numOfCoils) {
             return slaves.at(_id-1)->getCoil(_startAddress);
         }
     } else {
@@ -296,7 +328,7 @@ bool ofxModbusTcpClient::getCoil(int _id, int _startAddress) {
 }
 int ofxModbusTcpClient::getRegister(int _id, int _startAddress) {
     if (enabled ) {
-        if (_id>0 && _id <=slaves.size() && _startAddress<=123) {
+        if (_id>0 && _id < slaves.size() && _startAddress < numOfRegisters) {
             return slaves.at(_id-1)->getRegister(_startAddress);
         }
     } else {
@@ -307,11 +339,11 @@ int ofxModbusTcpClient::getRegister(int _id, int _startAddress) {
 //Slave Read Updates
 void ofxModbusTcpClient::updateCoils(int _id, int _startAddress, int _qty) {
     if (enabled) {
-        if (_id<=numberOfSlaves && _id>0 && _qty <=2000 && _qty>0) {
+        if (_id<=numberOfSlaves && _id>0 && _qty < numOfCoils) {
             uint8_t localByteArray[12];
             
             WORD length = 6;
-            WORD start = _startAddress-1;
+            WORD start = _startAddress;
             WORD qty = _qty;
             
             localByteArray[0] = HIGHBYTE(0); //Transaction High
@@ -322,8 +354,8 @@ void ofxModbusTcpClient::updateCoils(int _id, int _startAddress, int _qty) {
             localByteArray[5] = LOWBYTE(length); //Length Low
             localByteArray[6] = _id; //Unit Idenfifier
             localByteArray[7] = 0x01; //Function Code
-            localByteArray[8] = HIGHBYTE(start); //Start Address High
-            localByteArray[9] = LOWBYTE(start); //Start Address Low
+            localByteArray[8] = HIGHBYTE(start-1); //Start Address High
+            localByteArray[9] = LOWBYTE(start-1); //Start Address Low
             localByteArray[10] = HIGHBYTE(qty); //Qty High
             localByteArray[11] = LOWBYTE(qty); //Qty Low
             
@@ -351,12 +383,12 @@ void ofxModbusTcpClient::updateCoils(int _id, int _startAddress, int _qty) {
 }
 void ofxModbusTcpClient::updateRegisters(int _id, int _startAddress, int _qty) {
     if (enabled) {
-        if (_id<=numberOfSlaves && _id>0 && _qty<=125 && _qty>0) {
+        if (_id<=numberOfSlaves && _id > 0 && _qty < numOfRegisters) {
             uint8_t localByteArray[12];
             
             WORD tx = getTransactionID();
             WORD length = 6;
-            WORD start = _startAddress-1;
+            WORD start = _startAddress;
             WORD qty = _qty;
             
             localByteArray[0] = HIGHBYTE(tx); //Transaction High
@@ -367,8 +399,8 @@ void ofxModbusTcpClient::updateRegisters(int _id, int _startAddress, int _qty) {
             localByteArray[5] = LOWBYTE(length); //Length Low
             localByteArray[6] = _id; //Unit Idenfifier
             localByteArray[7] = 0x03; //Function Code
-            localByteArray[8] = HIGHBYTE(start); //Start Address High
-            localByteArray[9] = LOWBYTE(start); //Start Address Low
+            localByteArray[8] = HIGHBYTE(start-1); //Start Address High
+            localByteArray[9] = LOWBYTE(start-1); //Start Address Low
             localByteArray[10] = HIGHBYTE(qty); //Qty High
             localByteArray[11] = LOWBYTE(qty); //Qty Low
             
@@ -398,11 +430,11 @@ void ofxModbusTcpClient::updateRegisters(int _id, int _startAddress, int _qty) {
 //Slave Writes
 void ofxModbusTcpClient::writeCoil(int _id, int _startAddress, bool _newValue) {
     if (enabled) {
-        if (_id<=numberOfSlaves && _id>0 && _startAddress>0 && _startAddress<=2000) {
+        if (_id<=numberOfSlaves && _id>0 && _startAddress < numOfCoils) {
             uint8_t localByteArray[12];
             
             WORD length = 6;
-            WORD start = _startAddress-1;
+            WORD start = _startAddress;
             
             localByteArray[0] = HIGHBYTE(0); //Transaction High
             localByteArray[1] = LOWBYTE(0); //Transaction Low
@@ -412,8 +444,8 @@ void ofxModbusTcpClient::writeCoil(int _id, int _startAddress, bool _newValue) {
             localByteArray[5] = LOWBYTE(length); //Length Low
             localByteArray[6] = _id; //Unit Idenfifier
             localByteArray[7] = 0x05; //Function Code
-            localByteArray[8] = HIGHBYTE(start); //Start Address High
-            localByteArray[9] = LOWBYTE(start); //Start Address Low
+            localByteArray[8] = HIGHBYTE(start-1); //Start Address High
+            localByteArray[9] = LOWBYTE(start-1); //Start Address Low
             
             //New Value
             if (_newValue) {
@@ -446,11 +478,11 @@ void ofxModbusTcpClient::writeCoil(int _id, int _startAddress, bool _newValue) {
 }
 void ofxModbusTcpClient::writeRegister(int _id, int _startAddress, int _newValue) {
     if (enabled) {
-        if (_id<=numberOfSlaves && _id>0 && _startAddress>0 && _startAddress<=123) {
+        if (_id<=numberOfSlaves && _id>0 && _startAddress < numOfRegisters) {
             uint8_t localByteArray[12];
             
             WORD length = 6;
-            WORD start = _startAddress-1;
+            WORD start = _startAddress;
             WORD newVal = _newValue;
             
             localByteArray[0] = HIGHBYTE(0); //Transaction High
@@ -461,8 +493,8 @@ void ofxModbusTcpClient::writeRegister(int _id, int _startAddress, int _newValue
             localByteArray[5] = LOWBYTE(length); //Length Low
             localByteArray[6] = _id; //Unit Idenfifier
             localByteArray[7] = 0x06; //Function Code
-            localByteArray[8] = HIGHBYTE(start); //Start Address High
-            localByteArray[9] = LOWBYTE(start); //Start Address Low
+            localByteArray[8] = HIGHBYTE(start-1); //Start Address High
+            localByteArray[9] = LOWBYTE(start-1); //Start Address Low
             localByteArray[10] = HIGHBYTE(newVal); //New Value High
             localByteArray[11] = LOWBYTE(newVal); //New Value Low
             
@@ -488,12 +520,12 @@ void ofxModbusTcpClient::writeRegister(int _id, int _startAddress, int _newValue
 }
 void ofxModbusTcpClient::writeMultipleCoils(int _id, int _startAddress, vector<bool> _newValues) {
     if (enabled) {
-        if (_id<=numberOfSlaves && _id>0 && _startAddress>0 && _startAddress<=2000) {
+        if (_id<=numberOfSlaves && _id>0 && _startAddress < numOfCoils) {
             uint8_t localByteArray[6+(_newValues.size()*2)];
             
             int totB = ceil((float)_newValues.size()/(float)8); //Always in multiples of 8
             WORD length = 4 + (totB);
-            WORD start = _startAddress-1;
+            WORD start = _startAddress;
             
             localByteArray[0] = HIGHBYTE(0); //Transaction High
             localByteArray[1] = LOWBYTE(0); //Transaction Low
@@ -503,8 +535,8 @@ void ofxModbusTcpClient::writeMultipleCoils(int _id, int _startAddress, vector<b
             localByteArray[5] = LOWBYTE(length); //Length Low
             localByteArray[6] = _id; //Unit Idenfifier
             localByteArray[7] = 0x0f; //Function Code
-            localByteArray[8] = HIGHBYTE(start); //Start Address High
-            localByteArray[9] = LOWBYTE(start); //Start Address Low
+            localByteArray[8] = HIGHBYTE(start-1); //Start Address High
+            localByteArray[9] = LOWBYTE(start-1); //Start Address Low
             
             //New Value
             int cb = 10; //Starting Write Byte
@@ -547,11 +579,11 @@ void ofxModbusTcpClient::writeMultipleCoils(int _id, int _startAddress, vector<b
 }
 void ofxModbusTcpClient::writeMultipleRegisters(int _id, int _startAddress, vector<int> _newValues) {
     if (enabled) {
-        if (_id<=numberOfSlaves && _id>0 && _startAddress>0 && _startAddress<=123) {
+        if (_id<=numberOfSlaves && _id>0 && _startAddress < numOfRegisters) {
             uint8_t localByteArray[6+(_newValues.size()*2)];
             
             WORD length = 4 + (_newValues.size() * 2);
-            WORD start = _startAddress-1;
+            WORD start = _startAddress;
             
             localByteArray[0] = HIGHBYTE(0); //Transaction High
             localByteArray[1] = LOWBYTE(0); //Transaction Low
@@ -561,8 +593,8 @@ void ofxModbusTcpClient::writeMultipleRegisters(int _id, int _startAddress, vect
             localByteArray[5] = LOWBYTE(length); //Length Low
             localByteArray[6] = _id; //Unit Idenfifier
             localByteArray[7] = 0x10; //Function Code
-            localByteArray[8] = HIGHBYTE(start); //Start Address High
-            localByteArray[9] = LOWBYTE(start); //Start Address Low
+            localByteArray[8] = HIGHBYTE(start-1); //Start Address High
+            localByteArray[9] = LOWBYTE(start-1); //Start Address Low
             
             //New Value
             int ct = 10; //Starting Bit

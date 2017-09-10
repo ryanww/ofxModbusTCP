@@ -44,6 +44,9 @@ struct mbCommand{
 class ofxModbusTcpClient : public ofThread {
 public:
     
+    ofxModbusTcpClient();
+    ~ofxModbusTcpClient();
+    
     void setup(string _ip, int _numberOfSlaves);
     void setup(string _ip);
     
@@ -79,29 +82,31 @@ protected:
     void threadedFunction();
     
     //Slave Addresses & Slave Variables
-    int numberOfSlaves = 1;
+    int numberOfSlaves;
     void setupSlaves();
     vector<slave *> slaves; // vector of all the slave addresses
+    int numOfCoils;
+    int numOfRegisters;
     
     //TCP Coms
     ofxTCPClient tcpClient;
-    int PreviousActivityTime = 0;
-    float counter = 0.0f;
-    int connectTime = 0;
-    int deltaTime = 0;
-    bool weConnected = false;
-    string ip = "";
-    int port = 502;
+    int PreviousActivityTime;
+    float counter;
+    int connectTime;
+    int deltaTime;
+    bool weConnected;
+    string ip;
+    int port;
     
     //Commands
     vector<mbCommand*> commandToSend;
     mbCommand* lastSentCommand;
     void sendNextCommand();
     int getTransactionID();
-    int lastTransactionID = 0;
-    int lastFunctionCode = 0;
-    int lastStartingReg = 0;
-    bool waitingForReply = false;
+    int lastTransactionID;
+    int lastFunctionCode;
+    int lastStartingReg;
+    bool waitingForReply;
     
     //Debug
     void sendDebug(string _msg);
