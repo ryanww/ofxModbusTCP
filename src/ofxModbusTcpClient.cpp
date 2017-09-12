@@ -25,6 +25,8 @@
 
 #include "ofxModbusTcpClient.h"
 
+//Main
+#pragma mark MAIN
 ofxModbusTcpClient::ofxModbusTcpClient(){
     numOfCoils = 5000;
     numOfRegisters = 5000;
@@ -58,6 +60,7 @@ ofxModbusTcpClient::~ofxModbusTcpClient(){
 
 
 //Setup
+#pragma mark SETUP
 void ofxModbusTcpClient::setup(string _ip, int _numberOfSlaves) {
     ip = _ip;
     numberOfSlaves = _numberOfSlaves;
@@ -79,6 +82,7 @@ void ofxModbusTcpClient::setupSlaves() {
 }
 
 //Connection
+#pragma mark CONNECTION
 void ofxModbusTcpClient::connect() {
     if (!weConnected){
         enabled = true;
@@ -119,6 +123,7 @@ bool ofxModbusTcpClient::isConnected(){
 }
 
 //Enables
+#pragma mark ENABLES
 void ofxModbusTcpClient::setEnabled(bool _enabled) { enabled = _enabled; }
 void ofxModbusTcpClient::sendDebug(string _msg) {
     if (debug){
@@ -129,7 +134,8 @@ void ofxModbusTcpClient::setDebugEnabled(bool _enabled){
     debug = _enabled;
 }
 
-//Main Function
+//Running Function
+#pragma mark RUNNING FUNCTION
 void ofxModbusTcpClient::threadedFunction(){
     while (isThreadRunning()){
         for (auto &s : slaves){
@@ -222,14 +228,14 @@ void ofxModbusTcpClient::threadedFunction(){
                     int originatingID = headerReply[6];
                     int lengthData = convertToWord(headerReply[4], headerReply[5]);
                     
-                    
                     switch (functionCode) {
                         case 1: {
                             int byteCount = headerReply[8];
                             vector<char> nc;
                             vector<bool> nv;
                             for (int i=9; i<9+byteCount; i++){ nc.push_back(headerReply[i]); }
-                            int startAddr = convertToWord(lastSentCommand->msg[8], lastSentCommand->msg[9])+1;
+                            cout<<"here"<<endl;
+                            int startAddr = 1+convertToWord(lastSentCommand->msg[8], lastSentCommand->msg[9]);
                             int qty = convertToWord(lastSentCommand->msg[10], lastSentCommand->msg[11]);
                             sendDebug("Reply Received, Reading Multiple Coils - Qty:"+ofToString(qty)+" starting at:"+ofToString(startAddr));
                             if ((nc.size()*8) >= qty ){
@@ -317,6 +323,7 @@ void ofxModbusTcpClient::threadedFunction(){
 }
 
 //Slave Get Values
+#pragma mark SLAVE GETS
 bool ofxModbusTcpClient::getCoil(int _id, int _startAddress) {
     if (enabled) {
         if (_id>0 && _id < slaves.size() && _startAddress < numOfCoils) {
@@ -337,6 +344,7 @@ int ofxModbusTcpClient::getRegister(int _id, int _startAddress) {
 }
 
 //Slave Read Updates
+#pragma mark SLAVE READ UPDATES
 void ofxModbusTcpClient::updateCoils(int _id, int _startAddress, int _qty) {
     if (enabled) {
         if (_id<=numberOfSlaves && _id>0 && _qty < numOfCoils) {
@@ -428,6 +436,7 @@ void ofxModbusTcpClient::updateRegisters(int _id, int _startAddress, int _qty) {
 }
 
 //Slave Writes
+#pragma mark SLAVE WRITES
 void ofxModbusTcpClient::writeCoil(int _id, int _startAddress, bool _newValue) {
     if (enabled) {
         if (_id<=numberOfSlaves && _id>0 && _startAddress < numOfCoils) {
@@ -626,6 +635,7 @@ void ofxModbusTcpClient::writeMultipleRegisters(int _id, int _startAddress, vect
 }
 
 //Command Send
+#pragma mark CMD TO SEND
 int ofxModbusTcpClient::getTransactionID() {
     lastTransactionID = 1 + lastTransactionID;
     lastTransactionID = lastTransactionID * (lastTransactionID<999);
@@ -654,7 +664,12 @@ void ofxModbusTcpClient::sendNextCommand(){
             unsigned char * t = localByteArray;
             if (weConnected)tcpClient.sendRawBytes((const char*)t, 6+commandToSend.front()->length);
             
-            lastSentCommand = commandToSend.front();
+            delete lastSentCommand;
+            lastSentCommand = new mbCommand;
+            lastSentCommand->msg = commandToSend[0]->msg;
+            lastSentCommand->length = commandToSend[0]->length;
+            lastSentCommand->timeAdded = commandToSend[0]->timeAdded;
+            lastSentCommand->debugString = commandToSend[0]->debugString;
             
             //Log it
             sendDebug("Sent: "+commandToSend.front()->debugString);
@@ -667,6 +682,7 @@ void ofxModbusTcpClient::sendNextCommand(){
 }
 
 //Tools
+#pragma mark TOOLS
 WORD ofxModbusTcpClient::convertToWord(WORD _h, WORD _l) {
     WORD out;
     out = (_h << 8) | _l;
