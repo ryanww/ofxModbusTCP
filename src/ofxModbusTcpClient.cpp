@@ -302,7 +302,7 @@ void ofxModbusTcpClient::threadedFunction(){
                             int totalBytes = lastSentCommand->msg[12];
 
                             for (int i=0; i<totalBytes; i++){
-                                bitset<8> bs (lastSentCommand->msg[curByte+1]);
+                                bitset<8> bs (lastSentCommand->msg[curByte+i]);
                                 for (int b=0; b<8; b++){
                                     if (curBit < repQtyOfCoils){
                                         slaves.at(originatingID-1)->setCoil(curBit+repAddress, bs[curBit]);
@@ -564,7 +564,7 @@ void ofxModbusTcpClient::writeMultipleCoils(int _id, int _startAddress, vector<b
     if (enabled) {
         if (_id<=numberOfSlaves && _id>0 && (_startAddress+_newValues.size()) < numOfCoils) {
             int totalBytes = (_newValues.size()+7)/8;
-            int length = 6 + totalBytes;
+            int length = 7 + totalBytes;
             uint8_t localByteArray[7 + length];
             
             localByteArray[0] = HIGHBYTE(0); //Transaction High
@@ -581,15 +581,20 @@ void ofxModbusTcpClient::writeMultipleCoils(int _id, int _startAddress, vector<b
             localByteArray[11] = LOWBYTE(_newValues.size()); //Quantity of Coils Low
             localByteArray[12] = totalBytes; //Number of bytes
             
+            stringstream dm;
+            dm<<"Writing Multiple Coils to "<<_id<<" Start Address:"<<_startAddress<<" Qty:"<<_newValues.size()<<" - ";
+            
             //Load Data
             int curByte = 13;
             int curBit = 0;
             
             for (int i=0; i<totalBytes; i++){
                 bitset<8> bs;
+                bs.reset();
                 for (int b=0; b<8; b++){
                     if (curBit < _newValues.size()){
                         bs[b] = _newValues[curBit];
+                        dm<<bs[b];
                         curBit++;
                     } else {
                         b = 8;
@@ -597,9 +602,6 @@ void ofxModbusTcpClient::writeMultipleCoils(int _id, int _startAddress, vector<b
                 }
                 localByteArray[i+curByte] = bs.to_ulong();
             }
-            
-            stringstream dm;
-            dm<<"Writing Multiple Coils to "<<_id<<" Start Address:"<<_startAddress<<" Qty:"<<_newValues.size();
             
             vector<uint8_t> lba;
             int sizeOfArray = sizeof(localByteArray) / sizeof(localByteArray[0]);
