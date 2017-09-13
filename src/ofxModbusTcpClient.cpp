@@ -44,6 +44,8 @@ ofxModbusTcpClient::ofxModbusTcpClient(){
     lastFunctionCode = 0;
     lastStartingReg = 0;
     waitingForReply = false;
+    
+    lastSentCommand = new mbCommand;
 }
 ofxModbusTcpClient::~ofxModbusTcpClient(){
     stopThread();
@@ -697,8 +699,6 @@ void ofxModbusTcpClient::sendNextCommand(){
             unsigned char * t = localByteArray;
             if (weConnected)tcpClient.sendRawBytes((const char*)t, 6+commandToSend.front()->length);
             
-            delete lastSentCommand;
-            lastSentCommand = new mbCommand;
             lastSentCommand->msg = commandToSend[0]->msg;
             lastSentCommand->length = commandToSend[0]->length;
             lastSentCommand->timeAdded = commandToSend[0]->timeAdded;
