@@ -234,7 +234,6 @@ void ofxModbusTcpClient::threadedFunction(){
                             vector<char> nc;
                             vector<bool> nv;
                             for (int i=9; i<9+byteCount; i++){ nc.push_back(headerReply[i]); }
-                            cout<<"here"<<endl;
                             int startAddr = 1+convertToWord(lastSentCommand->msg[8], lastSentCommand->msg[9]);
                             int qty = convertToWord(lastSentCommand->msg[10], lastSentCommand->msg[11]);
                             sendDebug("Reply Received, Reading Multiple Coils - Qty:"+ofToString(qty)+" starting at:"+ofToString(startAddr));
