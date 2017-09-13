@@ -279,7 +279,40 @@ void ofxModbusTcpClient::threadedFunction(){
                             slaves.at(originatingID-1)->setRegister(address, convertToWord(headerReply[10], headerReply[11]));
                         } break;
                         case 15: {
-                            sendDebug("Reply Received, Setting Multiple Coils - not supported yet");
+                            int repAddress = convertToWord(headerReply[8], headerReply[9])+1;
+                            int repQtyOfCoils = convertToWord(headerReply[10], headerReply[11]);
+                            
+                            //Check Address
+                            if (lastSentCommand->msg[8] != headerReply[8] || lastSentCommand->msg[9] != headerReply[9]){
+                                //Address reply incorrect
+                                sendDebug("Error - Address doesn't match up.");
+                                break;
+                            }
+                            
+                            //Check Coil Qty
+                            if (lastSentCommand->msg[10] != headerReply[10] || lastSentCommand->msg[11] != headerReply[11]){
+                                //Coil qty wrong
+                                sendDebug("Error - Coil Quantity doesn't match up.");
+                                break;
+                            }
+                            
+                            //Load Data
+                            int curByte = 13;
+                            int curBit = 0;
+                            int totalBytes = lastSentCommand->msg[12];
+
+                            for (int i=0; i<totalBytes; i++){
+                                bitset<8> bs (lastSentCommand->msg[curByte+1]);
+                                for (int b=0; b<8; b++){
+                                    if (curBit < repQtyOfCoils){
+                                        slaves.at(originatingID-1)->setCoil(curBit+repAddress, bs[curBit]);
+                                        curBit++;
+                                    } else {
+                                        b = 8;
+                                    }
+                                }
+                            }
+                            sendDebug("Reply Received, Setting "+ofToString(repQtyOfCoils)+" Coils at address: "+ofToString(repAddress)+" for slave "+ofToString(originatingID-1));
                         } break;
                         case 16: {
                             sendDebug("Reply Received, Setting Multiple Registers - not supported yet");
@@ -529,12 +562,10 @@ void ofxModbusTcpClient::writeRegister(int _id, int _startAddress, int _newValue
 }
 void ofxModbusTcpClient::writeMultipleCoils(int _id, int _startAddress, vector<bool> _newValues) {
     if (enabled) {
-        if (_id<=numberOfSlaves && _id>0 && _startAddress < numOfCoils) {
-            uint8_t localByteArray[6+(_newValues.size()*2)];
-            
-            int totB = ceil((float)_newValues.size()/(float)8); //Always in multiples of 8
-            WORD length = 4 + (totB);
-            WORD start = _startAddress;
+        if (_id<=numberOfSlaves && _id>0 && (_startAddress+_newValues.size()) < numOfCoils) {
+            int totalBytes = (_newValues.size()+7)/8;
+            int length = 6 + totalBytes;
+            uint8_t localByteArray[7 + length];
             
             localByteArray[0] = HIGHBYTE(0); //Transaction High
             localByteArray[1] = LOWBYTE(0); //Transaction Low
@@ -544,26 +575,27 @@ void ofxModbusTcpClient::writeMultipleCoils(int _id, int _startAddress, vector<b
             localByteArray[5] = LOWBYTE(length); //Length Low
             localByteArray[6] = _id; //Unit Idenfifier
             localByteArray[7] = 0x0f; //Function Code
-            localByteArray[8] = HIGHBYTE(start-1); //Start Address High
-            localByteArray[9] = LOWBYTE(start-1); //Start Address Low
+            localByteArray[8] = HIGHBYTE(_startAddress-1); //Start Address High
+            localByteArray[9] = LOWBYTE(_startAddress-1); //Start Address Low
+            localByteArray[10] = HIGHBYTE(_newValues.size()); //Quantity of Coils High
+            localByteArray[11] = LOWBYTE(_newValues.size()); //Quantity of Coils Low
+            localByteArray[12] = totalBytes; //Number of bytes
             
-            //New Value
-            int cb = 10; //Starting Write Byte
-            int cv = 0; //Starting bit
+            //Load Data
+            int curByte = 13;
+            int curBit = 0;
             
-            for (int p=0; p<_newValues.size(); p++) {
-                
-                if (_newValues.at(p)) { //Set Bit
-                    localByteArray[cb] |= 1 << cv;
-                } else { //Clear Bit
-                    localByteArray[cb] &= ~(1 << cv);
+            for (int i=0; i<totalBytes; i++){
+                bitset<8> bs;
+                for (int b=0; b<8; b++){
+                    if (curBit < _newValues.size()){
+                        bs[b] = _newValues[curBit];
+                        curBit++;
+                    } else {
+                        b = 8;
+                    }
                 }
-                
-                cv++; //Move to Next Bit
-                if (cv==8) {
-                    cv = 0; //Reset Bits
-                    cb++; //Move to next Byte
-                }
+                localByteArray[i+curByte] = bs.to_ulong();
             }
             
             stringstream dm;
