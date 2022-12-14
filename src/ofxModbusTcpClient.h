@@ -49,6 +49,7 @@ public:
     
     void setup(string _ip, int _numberOfSlaves);
     void setup(string _ip);
+    void setup(string _ip, int _numberOfSlaves, int _port);
     
     void connect();
     void disconnect();

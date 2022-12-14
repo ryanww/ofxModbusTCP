@@ -70,9 +70,18 @@ void ofxModbusTcpClient::setup(string _ip, int _numberOfSlaves) {
     ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
     setupSlaves();
 }
+
 void ofxModbusTcpClient::setup(string _ip) {
     ip = _ip;
     numberOfSlaves = 1;
+    ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
+    setupSlaves();
+}
+void ofxModbusTcpClient::setup(string _ip, int _numberOfSlaves, int _port) {
+    ip = _ip;
+    port = _port;
+    numberOfSlaves = _numberOfSlaves;
+    if (numberOfSlaves == 0 || numberOfSlaves > 247) { numberOfSlaves = 1; }
     ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
     setupSlaves();
 }
@@ -362,6 +371,8 @@ bool ofxModbusTcpClient::getCoil(int _id, int _startAddress) {
     if (enabled) {
         if (_id>0 && _id < slaves.size() && _startAddress < numOfCoils) {
             return slaves.at(_id-1)->getCoil(_startAddress);
+        } else {
+            return false;
         }
     } else {
         return false;
@@ -371,6 +382,8 @@ int ofxModbusTcpClient::getRegister(int _id, int _startAddress) {
     if (enabled ) {
         if (_id>0 && _id < slaves.size() && _startAddress < numOfRegisters) {
             return slaves.at(_id-1)->getRegister(_startAddress);
+        } else {
+            return 0;
         }
     } else {
         return 0;
