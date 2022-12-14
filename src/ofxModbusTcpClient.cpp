@@ -70,9 +70,18 @@ void ofxModbusTcpClient::setup(string _ip, int _numberOfSlaves) {
     ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
     setupSlaves();
 }
+
 void ofxModbusTcpClient::setup(string _ip) {
     ip = _ip;
     numberOfSlaves = 1;
+    ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
+    setupSlaves();
+}
+void ofxModbusTcpClient::setup(string _ip, int _numberOfSlaves, int _port) {
+    ip = _ip;
+    port = _port;
+    numberOfSlaves = _numberOfSlaves;
+    if (numberOfSlaves == 0 || numberOfSlaves > 247) { numberOfSlaves = 1; }
     ofLogVerbose("ofxModbusTCP IP:"+ip)<<"Setup with "<<numberOfSlaves<<" slaves";
     setupSlaves();
 }
