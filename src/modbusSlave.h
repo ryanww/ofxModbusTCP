@@ -46,6 +46,7 @@ public:
             return C.at(_coilAddress);
         } else {
             ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Get Slave Coil Exceeds Size";
+            return 0;
         }
     }
     int getRegister (int _registerAddress) {
@@ -53,6 +54,7 @@ public:
             return R.at(_registerAddress);
         } else {
             ofLogError("ofxModbusTCP Slave:"+ofToString(idNumber)+" on "+masterIP)<<"Get Slave Register Exceeds Size";
+            return 0;
         }
     }
     
